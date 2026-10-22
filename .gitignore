@@ -9,3 +9,7 @@ dist/
 .impeccable/
 .serena/
 CLAUDE.local.md
+# The iPhone app: XcodeGen makes the project and Info.plist, CI makes the icon from assets/icon.icns.
+ios/eBench.xcodeproj/
+ios/eBench/Info.plist
+ios/eBench/Assets.xcassets/AppIcon.appiconset/icon.png

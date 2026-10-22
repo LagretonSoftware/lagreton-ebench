@@ -1,5 +1,6 @@
-# Push a tag like v0.1.0 (matching pyproject.toml's version) and this builds eBench.app on a Mac
-# and attaches it to a GitHub release, with a checksum and a build attestation.
+# Push a tag like v0.1.0 (matching pyproject.toml's version) and this builds eBench.app on a Mac,
+# and the iPhone companion's .ipa (ios.yml), and attaches both to a GitHub release with checksums
+# and a build attestation.
 name: Release
 
 on:
@@ -12,7 +13,11 @@ permissions:
   attestations: write
 
 jobs:
+  ios:
+    uses: ./.github/workflows/ios.yml
+
   release:
+    needs: ios
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -23,15 +28,22 @@ jobs:
           test "$GITHUB_REF_NAME" = "v$version" || { echo "::error::Tag $GITHUB_REF_NAME but pyproject.toml says $version"; exit 1; }
       - name: Build eBench.app
         run: uv run pyinstaller --noconfirm ebench.spec
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: eBench-ios
+          path: dist
       - name: Zip it
         working-directory: dist
         run: |
           ditto -c -k --keepParent eBench.app "eBench-$GITHUB_REF_NAME-macos-arm64.zip"
-          shasum -a 256 eBench-*.zip > SHA256SUMS
+          mv eBench-ios.ipa "eBench-$GITHUB_REF_NAME-ios.ipa"
+          shasum -a 256 eBench-*.zip eBench-*.ipa > SHA256SUMS
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: dist/eBench-*.zip
+          subject-path: |
+            dist/eBench-*.zip
+            dist/eBench-*.ipa
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/eBench-*.zip dist/SHA256SUMS --title "eBench $GITHUB_REF_NAME" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" dist/eBench-*.zip dist/eBench-*.ipa dist/SHA256SUMS --title "eBench $GITHUB_REF_NAME" --generate-notes

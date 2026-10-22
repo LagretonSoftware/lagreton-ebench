@@ -1,0 +1,44 @@
+# Builds the iPhone companion as an unsigned .ipa. iloader signs it with your own Apple ID when it installs it.
+# Runs on every push that touches the app, by hand, and from release.yml for each version tag.
+name: iPhone app
+
+on:
+  push:
+    branches: ["**"]  # tags build through release.yml
+    paths: ["ios/**", "assets/icon.icns", ".github/workflows/ios.yml"]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  ipa:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Make the Xcode project
+        run: brew install xcodegen && xcodegen --spec ios/project.yml
+      - name: App icon from the Mac app's
+        # The Mac icon draws its tile in the middle 824 px of 1024; iOS wants the tile edge to edge.
+        run: |
+          icon=ios/eBench/Assets.xcassets/AppIcon.appiconset/icon.png
+          sips -s format png assets/icon.icns --out "$icon"
+          sips -c 824 824 "$icon"
+          sips -z 1024 1024 "$icon"
+      - name: Build
+        run: |
+          version=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          xcodebuild -project ios/eBench.xcodeproj -scheme eBench -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build/ios \
+            MARKETING_VERSION="$version" CODE_SIGNING_ALLOWED=NO build
+      - name: Pack the .ipa
+        run: |
+          mkdir -p build/ipa/Payload
+          cp -R build/ios/Build/Products/Release-iphoneos/eBench.app build/ipa/Payload/
+          cd build/ipa && zip -qry eBench-ios.ipa Payload
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: eBench-ios
+          path: build/ipa/eBench-ios.ipa
+          if-no-files-found: error
