@@ -1,0 +1,26 @@
+[project]
+name = "lagreton-ebench"
+version = "0.1.0"
+description = "Back up, manage and switch firmware on your ESP32 boards, from a Mac"
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+requires-python = ">=3.12"
+dependencies = [
+    "esptool>=5.6.0",
+    "pywebview>=6.2.1",
+]
+
+[project.scripts]
+ebench = "ebench.app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.22.3",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["ebench"]

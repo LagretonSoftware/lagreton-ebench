@@ -1,0 +1,9 @@
+# Board backups hold Wi-Fi passwords and tokens: never commit them.
+backups/
+*.bin
+.claude/
+.venv/
+__pycache__/
+build/
+dist/
+.impeccable/
