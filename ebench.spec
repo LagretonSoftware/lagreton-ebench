@@ -1,4 +1,4 @@
-# Build the Mac app: uv run pyinstaller ebench.spec  ->  dist/Lagreton eBench.app
+# Build the Mac app: uv run pyinstaller ebench.spec  ->  dist/eBench.app
 # The icon is assets/icon.svg; after changing it, remake assets/icon.icns with rsvg-convert (16-1024 px) and iconutil.
 import tomllib
 
@@ -14,11 +14,11 @@ a = Analysis(
     hiddenimports=collect_submodules("esptool") + collect_submodules("espefuse"),
 )
 pyz = PYZ(a.pure)
-exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="Lagreton eBench", console=False)
-coll = COLLECT(exe, a.binaries, a.datas, name="Lagreton eBench")
+exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="eBench", console=False)
+coll = COLLECT(exe, a.binaries, a.datas, name="eBench")
 app = BUNDLE(
     coll,
-    name="Lagreton eBench.app",
+    name="eBench.app",
     icon="assets/icon.icns",
     bundle_identifier="com.lagreton.ebench",
     version=version,

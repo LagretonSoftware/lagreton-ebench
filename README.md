@@ -32,7 +32,7 @@ cd lagreton-ebench
 uv run ebench
 ```
 
-To build the app: `uv run pyinstaller --noconfirm ebench.spec`, which makes `dist/Lagreton eBench.app`.
+To build the app: `uv run pyinstaller --noconfirm ebench.spec`, which makes `dist/eBench.app`.
 
 Backups hold your Wi-Fi passwords. They live in `~/Library/Application Support/Lagreton eBench` and are never uploaded.
 
