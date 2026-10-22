@@ -1,0 +1,37 @@
+# Push a tag like v0.1.0 (matching pyproject.toml's version) and this builds eBench.app on a Mac
+# and attaches it to a GitHub release, with a checksum and a build attestation.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - name: Tag matches the project version
+        run: |
+          version=$(uv run --no-project python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          test "$GITHUB_REF_NAME" = "v$version" || { echo "::error::Tag $GITHUB_REF_NAME but pyproject.toml says $version"; exit 1; }
+      - name: Build eBench.app
+        run: uv run pyinstaller --noconfirm ebench.spec
+      - name: Zip it
+        working-directory: dist
+        run: |
+          ditto -c -k --keepParent eBench.app "eBench-$GITHUB_REF_NAME-macos-arm64.zip"
+          shasum -a 256 eBench-*.zip > SHA256SUMS
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/eBench-*.zip
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/eBench-*.zip dist/SHA256SUMS --title "eBench $GITHUB_REF_NAME" --generate-notes

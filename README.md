@@ -22,9 +22,15 @@ Lagreton eBench is a Mac app for your ESP32 boards. Plug a board in to see what 
 - **My boards**: every board you've used, with its saves and history, plugged in or not.
 - **Lock open** (ESP32-S3 and C6): permanently write-protects the eFuses that could turn on encryption, secure boot or disable USB flashing. It runs on a virtual copy of the chip first.
 
-## Get started
+## Download
 
-You need macOS on Apple silicon and [uv](https://docs.astral.sh/uv/).
+Get `eBench-<version>-macos-arm64.zip` from [Releases](https://github.com/LagretonSoftware/lagreton-ebench/releases/latest), unzip it and move `eBench.app` to Applications. It runs on macOS with Apple silicon.
+
+The app isn't notarized by Apple yet, so the first time it won't open. Go to System Settings › Privacy & Security and click **Open Anyway** next to eBench.
+
+## Run from source
+
+You need [uv](https://docs.astral.sh/uv/).
 
 ```sh
 git clone https://github.com/LagretonSoftware/lagreton-ebench
@@ -32,7 +38,7 @@ cd lagreton-ebench
 uv run ebench
 ```
 
-To build the app: `uv run pyinstaller --noconfirm ebench.spec`, which makes `dist/eBench.app`.
+To build the app yourself: `uv run pyinstaller --noconfirm ebench.spec`, which makes `dist/eBench.app`.
 
 Backups hold your Wi-Fi passwords. They live in `~/Library/Application Support/Lagreton eBench` and are never uploaded.
 
