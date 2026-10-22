@@ -39,7 +39,7 @@ The iPhone companion shows every board on your Mac's hub, with its log and saves
 2. Install [iloader](https://iloader.app) on the Mac, plug in the iPhone, sign in with your Apple ID and choose **Import IPA**.
 3. On the iPhone, turn on Developer Mode if it asks (Settings › Privacy & Security), and trust your Apple ID under Settings › General › VPN & Device Management.
 
-With a free Apple ID, apps installed this way stop opening after 7 days. Install it again with iloader.
+With a free Apple ID, apps installed this way stop opening after 7 days. Install it again with iloader. A free Apple ID also allows only 3 such apps on a phone at once: if iloader says the device "has reached the maximum number of installed apps", delete one of the others first.
 
 ### Pair
 
