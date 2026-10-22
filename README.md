@@ -27,7 +27,7 @@ Lagreton eBench is a Mac app for your ESP32 boards. Plug a board in to see what 
 You need macOS on Apple silicon and [uv](https://docs.astral.sh/uv/).
 
 ```sh
-git clone https://github.com/Leonidas25/lagreton-ebench
+git clone https://github.com/LagretonSoftware/lagreton-ebench
 cd lagreton-ebench
 uv run ebench
 ```
