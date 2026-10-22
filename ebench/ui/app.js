@@ -75,9 +75,11 @@ const I = {
   info: ['M12 11v5', 'M12 8h.01', 'M12 3.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 0 0 0-17z'],
   back: ['M15 6l-6 6 6 6'],
   check: ['M5 12.5l4.5 4.5L19 7.5'],
+  phone: ['M8 3h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z', 'M11 18h2'],
+  close: ['M6 6l12 12M18 6L6 18'],
 };
 
-function Header({ title, tab, setTab }) {
+function Header({ title, tab, setTab, openPhones }) {
   return html`
     <header class="k-glass pywebview-drag-region" style=${`flex: 0 0 auto; position: relative; height: 40px; box-sizing: border-box; margin: 6px 10px 0; display: flex; align-items: center; padding: 0 4px 0 ${IN_WINDOW ? 76 : 20}px; border-radius: 999px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 18px 40px rgba(0,0,0,0.3)`}>
       <div class="pywebview-drag-region" style="flex: 1 1 0; min-width: 0; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">${title}</div>
@@ -87,7 +89,8 @@ function Header({ title, tab, setTab }) {
           <button role="tab" aria-selected=${String(tab === i)} onClick=${() => setTab(i)}
             style=${`position: relative; width: 92px; height: 26px; border: 0; border-radius: 999px; background: transparent; font-size: 13px; font-weight: 500; color: ${tab === i ? 'var(--ink)' : 'var(--muted)'}`}>${label}</button>`)}
       </div>
-      <div class="pywebview-drag-region" style="flex: 1 1 0; min-width: 0; display: flex; justify-content: flex-end">
+      <div class="pywebview-drag-region" style="flex: 1 1 0; min-width: 0; display: flex; justify-content: flex-end; gap: 6px">
+        <button class="k-btn" onClick=${openPhones} style="height: 32px"><${Icon} d=${I.phone} size=${14} sw=${2} /> Phones</button>
         <button class="k-btn" onClick=${() => setTab(1)} style="height: 32px"><${Icon} d=${I.plus} size=${14} sw=${2} /> Import</button>
       </div>
     </header>`;
@@ -1101,8 +1104,81 @@ function BoardView({ b, tab, setTab, library, sel, pick, log, openSave }) {
   return html`<${LogView} b=${b} log=${log} />`;
 }
 
+const TAILSCALE = /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./;  // 100.64.0.0/10
+const ago = (s) => (s === null ? 'not seen since eBench opened' : s < 10 ? 'connected now'
+  : `seen ${s < 3600 ? `${Math.max(1, Math.round(s / 60))} min` : `${Math.round(s / 3600)} h`} ago`);
+
+// Pair an iPhone by QR code, see who's paired, remove one. Phones can do everything here except Lock open.
+function Phones({ close }) {
+  const [info, setInfo] = useState(null);
+  const [offer, setOffer] = useState(null);
+  const [note, setNote] = useState('');
+  const paired = useRef(null);
+  const load = () => api('phones').then((i) => {
+    if (offer && paired.current !== null && i.phones.length > paired.current) setOffer(null);  // the code was just used
+    paired.current = i.phones.length;
+    setInfo(i);
+  }).catch((e) => setNote(e.message));
+  useEffect(() => { load(); const t = setInterval(load, 3000); return () => clearInterval(t); }, [offer]);
+  const pair = () => api('phones/pair', { method: 'POST' }).then((o) => { setOffer(o); setNote(o.error || ''); }).catch((e) => setNote(e.message));
+  const remove = (id) => api(`phones/remove?id=${encodeURIComponent(id)}`, { method: 'POST' }).then(load).catch((e) => setNote(e.message));
+  const showing = offer && !offer.error && offer.expires * 1000 > Date.now();
+  const n = showing ? offer.qr.length : 0;
+  const cells = showing ? offer.qr.flatMap((row, y) => [...row].map((c, x) => (c === '1' ? `M${x} ${y}h1v1h-1z` : ''))).join('') : '';
+  const hosts = info ? info.hosts : [];
+  const tail = hosts.filter((h) => TAILSCALE.test(h));
+  return html`
+    <div class="k-fade" onClick=${(e) => e.target === e.currentTarget && close()} style="position: absolute; inset: 0; z-index: 10; background: rgba(12,12,14,0.42)">
+      <section role="dialog" aria-modal="true" aria-label="Phones" class="k-glass k-drop"
+        style="position: absolute; top: 46px; left: 50%; transform: translateX(-50%); width: 560px; max-width: calc(100% - 32px); max-height: calc(100% - 60px); overflow-y: auto; box-sizing: border-box; border-radius: 0 0 18px 18px; border-top: 0; padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; background: linear-gradient(180deg, #3E3E44, #2C2C30)">
+        <div style="display: flex; align-items: flex-start; gap: 12px">
+          <div style="flex: 1 1 auto"><h2 class="k-h2">Phones</h2>
+            <p class="k-lab" style="margin-top: 2px; font-size: 12px">Run this Mac's boards from an iPhone, over your Wi-Fi, or through Tailscale when you're away.</p></div>
+          <button class="k-icon" aria-label="Close" onClick=${close}><${Icon} d=${I.close} size=${14} sw=${2} /></button>
+        </div>
+        <div style="display: flex; gap: 18px; align-items: center">
+          <div style="flex: 0 0 auto; width: 176px; height: 176px; box-sizing: border-box; padding: 10px; border-radius: 14px; background: ${showing ? '#FFFFFF' : 'rgba(0,0,0,0.16)'}; display: grid; place-items: center">
+            ${showing ? html`<svg role="img" aria-label="Pairing code" viewBox=${`0 0 ${n} ${n}`} width="156" height="156" shape-rendering="crispEdges"><path d=${cells} fill="#1A1A1D" /></svg>`
+              : html`<span style="color: var(--muted)"><${Icon} d=${I.phone} size=${40} sw=${1.4} /></span>`}
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px; min-width: 0">
+            <h3 class="k-h3">Pair a phone</h3>
+            <ol style="list-style: decimal; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; color: var(--muted); line-height: 1.45">
+              <li>Put eBench on the iPhone with iloader. The <span class="k-mono">.ipa</span> is in each release.</li>
+              <li>Open it and scan this code.</li>
+            </ol>
+            <span class="k-lab">${showing ? 'This code works once, for 10 minutes.' : 'Each code pairs one phone.'}</span>
+            <button class=${showing ? 'k-btn k-sm' : 'k-primary'} onClick=${pair} style="align-self: flex-start">${showing ? 'New code' : 'Show a code'}</button>
+          </div>
+        </div>
+        <dl class="k-well" style="padding: 10px 12px; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 14px; row-gap: 6px">
+          <dt class="k-lab">This network</dt><dd class="k-mono" style="font-size: 12px; overflow-wrap: anywhere">${hosts.filter((h) => !TAILSCALE.test(h)).join(' · ') || '…'}</dd>
+          <dt class="k-lab">Tailscale</dt><dd class="k-mono" style="font-size: 12px">${tail.join(' · ') || html`<span style="font-family: Geist, sans-serif; color: var(--faint)">Not on Tailscale. Needed only away from home: see the README.</span>`}</dd>
+        </dl>
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <h3 class="k-h3">Paired</h3>
+          ${info && info.phones.length ? html`
+            <ul style="border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.14)">
+              ${info.phones.map((p, i) => html`
+                <li style=${`display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 12px; ${i ? 'border-top: 1px solid rgba(255,255,255,0.10)' : ''}`}>
+                  <span style="color: var(--muted); display: flex"><${Icon} d=${I.phone} /></span>
+                  <span style="flex: 1 1 auto; display: flex; flex-direction: column; gap: 1px">
+                    <span style="font-weight: 600">${p.name}</span>
+                    <span class="k-lab">Paired ${dayMonth(p.paired)} · <span style=${p.ago !== null && p.ago < 10 ? `color: ${LIVE}` : ''}>${ago(p.ago)}</span></span>
+                  </span>
+                  <button class="k-btn k-sm" onClick=${() => remove(p.id)}>Remove</button>
+                </li>`)}
+            </ul>` : html`<p class="k-lab">No phones yet. Until one pairs, nothing outside this Mac can reach eBench.</p>`}
+          <p class="k-lab">Phones can do everything here except Lock open and importing firmware. A removed phone has to scan a new code.</p>
+        </div>
+        ${(note || (info && info.error)) && html`<p class="k-lab" style="color: var(--warn)">${note || info.error}</p>`}
+      </section>
+    </div>`;
+}
+
 function App() {
   const [state, setState] = useState(null);
+  const [phones, setPhones] = useState(false);
   const [error, setError] = useState('');
   const [tab, setTab] = useState(0);
   const [port, setPort] = useState(null);
@@ -1172,7 +1248,7 @@ function App() {
       <div aria-hidden="true" class=${boards.some((x) => x.job) ? 'k-halo busy' : 'k-halo'} style=${`position: absolute; left: 22%; top: 90px; width: 46%; height: 360px; border-radius: 50%; background: radial-gradient(closest-side, ${boards.some((x) => x.job) ? 'rgba(255,90,71,0.3)' : 'rgba(91,227,165,0.14)'}, transparent); filter: blur(30px)`}></div>
       <div aria-hidden="true" class="k-dots"></div>
       <div style="position: relative; height: 100%; display: flex; flex-direction: column">
-        <${Header} title=${title} tab=${tab} setTab=${(i) => { setTab(i); if (i === 2) setPage(null); }} />
+        <${Header} title=${title} tab=${tab} setTab=${(i) => { setTab(i); if (i === 2) setPage(null); }} openPhones=${() => setPhones(true)} />
         ${state && html`
           <div style="flex: 1 1 auto; min-height: 0; display: flex; gap: 12px; padding: 12px 0 0 10px">
             <${Sidebar} boards=${boards} profiles=${profiles} current=${b} library=${library} sel=${effSel} pick=${(id) => { setSel(id); setTab(1); }} openImport=${() => setTab(1)}
@@ -1192,6 +1268,7 @@ function App() {
       ${ob && obBoard && html`<${Onboard} key=${ob.mac} b=${obBoard} step=${ob.step}
         onSaved=${(backingUp) => (backingUp ? setOb({ ...ob, step: 'backup' }) : (setOb({ ...ob, step: 'done' }), openBoard(ob.mac)))}
         onOpen=${() => { setOb({ ...ob, step: 'done' }); openBoard(ob.mac); }} />`}
+      ${phones && html`<${Phones} close=${() => setPhones(false)} />`}
     </div>`;
 }
 
