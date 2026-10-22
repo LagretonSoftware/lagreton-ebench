@@ -1,6 +1,6 @@
 [project]
 name = "lagreton-ebench"
-version = "0.1.0"
+version = "0.2.0"
 description = "Back up, manage and switch firmware on your ESP32 boards, from a Mac"
 readme = "README.md"
 license = "AGPL-3.0-or-later"

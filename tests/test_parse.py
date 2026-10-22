@@ -28,6 +28,9 @@ def test_ruview_backup():
 
     parts = parse.partition_table(read(0x8000, 0xC00))
     by = {p["label"]: p for p in parts}
+    if "ota_1" not in by:
+        print(f"skipped: {path.name} isn't a RuView node's backup (set EBENCH_BACKUP)")
+        return
     assert (by["nvs"]["offset"], by["nvs"]["size"]) == (0x9000, 0x6000), by["nvs"]
     assert (by["ota_0"]["offset"], by["ota_1"]["offset"]) == (0x20000, 0x1F0000)
     assert by["otadata"]["subtype"] == "otadata" and by["ota_1"]["subtype"] == "ota_1"

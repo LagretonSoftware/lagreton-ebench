@@ -25,7 +25,7 @@ Lagreton eBench is a Mac app for your ESP32 boards. Plug a board in to see what 
 
 ## Download
 
-Get `eBench-<version>-macos-arm64.zip` from [Releases](https://github.com/LagretonSoftware/lagreton-ebench/releases/latest), unzip it and move `eBench.app` to Applications. It runs on macOS with Apple silicon.
+Get `eBench-<version>-macos-arm64.zip` from [Releases](https://github.com/LagretonSoftware/lagreton-ebench/releases/latest), unzip it and move `eBench.app` to Applications. It runs on macOS with Apple silicon. The same release has the [iPhone companion](#iphone).
 
 The app isn't notarized by Apple yet, so the first time it won't open. Go to System Settings › Privacy & Security and click **Open Anyway** next to eBench.
 
@@ -35,11 +35,7 @@ The iPhone companion shows every board on your Mac's hub, with its log and saves
 
 ### Install
 
-1. Get `eBench-<version>-ios.ipa` from [Releases](https://github.com/LagretonSoftware/lagreton-ebench/releases/latest).
-2. Install [iloader](https://iloader.app) on the Mac, plug in the iPhone, sign in with your Apple ID and choose **Import IPA**.
-3. On the iPhone, turn on Developer Mode if it asks (Settings › Privacy & Security), and trust your Apple ID under Settings › General › VPN & Device Management.
-
-With a free Apple ID, apps installed this way stop opening after 7 days. Install it again with iloader. A free Apple ID also allows only 3 such apps on a phone at once: if iloader says the device "has reached the maximum number of installed apps", delete one of the others first.
+Get `eBench-<version>-ios.ipa` from [Releases](https://github.com/LagretonSoftware/lagreton-ebench/releases/latest) and install it on the iPhone with [iloader](https://github.com/nab138/iloader) (**Import IPA**). How to set up iloader, and what to do when it reports an error, is in [its README](https://github.com/nab138/iloader#readme).
 
 ### Pair
 
