@@ -9,7 +9,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from ebench import board, library, lock, saves, switch
+from ebench import board, library, lock, remote, saves, switch
 
 UI =Path(__file__).parent / "ui"
 HOSTS = {"127.0.0.1", "localhost", "ebench.localhost"}
@@ -50,22 +50,29 @@ class Handler(SimpleHTTPRequestHandler):
             return False
         return True
 
+    def live(self):
+        return True
+
     def stream(self):
         """Server-sent events: the board list whenever it changes, and every new log line."""
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.end_headers()
-        sent_state, sent_line = None, 0
+        sent_state, sent_line, sent_at = None, 0, time.time()
         try:
-            while True:
+            while self.live():
                 now = json.dumps(state())
                 if now != sent_state:
                     self.wfile.write(f"event: state\ndata: {now}\n\n".encode())
-                    sent_state = now
+                    sent_state, sent_at = now, time.time()
                 lines = board.log_since(sent_line)
                 if lines:
                     sent_line = max(group[-1]["n"] for group in lines.values())
                     self.wfile.write(f"event: log\ndata: {json.dumps(lines)}\n\n".encode())
+                    sent_at = time.time()
+                if time.time() - sent_at > 15:  # a comment line: keeps a quiet phone stream from timing out
+                    self.wfile.write(b": ping\n\n")
+                    sent_at = time.time()
                 self.wfile.flush()
                 time.sleep(0.25)
         except (BrokenPipeError, ConnectionResetError):
@@ -87,6 +94,10 @@ class Handler(SimpleHTTPRequestHandler):
             return super().do_GET()
         if self.path == "/api/state":
             return self.send_json(state())
+        if self.path == "/api/hello":
+            return self.send_json(remote.hello())
+        if self.path == "/api/phones":
+            return self.send_json(remote.listing())
         if self.path.startswith("/api/events?"):
             return self.stream()
         action, port, save_id = self.route()
@@ -158,6 +169,13 @@ class Handler(SimpleHTTPRequestHandler):
         if not self.guard(True):
             return
         action, port, save_id = self.route()
+        if action == "phones" and port == "pair":  # a new QR code; opens the phones' listener if it's closed
+            remote.start(PhoneHandler)
+            offer = remote.pair()
+            return self.send_json({**offer, "qr": remote.qr(offer["code"]), "error": remote.error})
+        if action == "phones" and port == "remove":
+            ok = remote.remove(save_id)
+            return self.send_json({"ok": ok}, 200 if ok else 404)
         if action == "delete-import":
             ok = library.delete(save_id)
             return self.send_json({"ok": ok}, 200 if ok else 404)
@@ -197,6 +215,26 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_error(404)
 
 
+class PhoneHandler(Handler):
+    """The phones' listener: the same API, a paired phone's token instead of the window's key, and no UI files."""
+    phone = None
+
+    def guard(self, api):
+        action = urlsplit(self.path).path.removeprefix("/api/").partition("/")[0]
+        if not api or action in remote.MAC_ONLY:
+            self.send_error(403)
+            return False
+        auth = self.headers.get("Authorization", "")
+        self.phone = remote.check(auth.removeprefix("Bearer "), self.headers.get("X-eBench-Phone", ""))
+        if not self.phone:
+            self.send_error(401)  # the phone was removed, or its code expired: it has to pair again
+            return False
+        return True
+
+    def live(self):
+        return remote.still_paired(self.phone)
+
+
 def blend_titlebar(window):
     """Drop the grey title bar: the page runs underneath and the traffic lights sit in its header."""
     import AppKit
@@ -222,6 +260,7 @@ def main():
     server = ThreadingHTTPServer(("127.0.0.1", args.dev or 0), Handler)
     port = server.server_address[1]
     threading.Thread(target=board.watch, daemon=True).start()
+    remote.resume(PhoneHandler)
     if args.dev:
         print(f"Lagreton eBench: http://ebench.localhost:{port}/#k={KEY}", flush=True)
         server.serve_forever()
