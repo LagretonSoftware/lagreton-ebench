@@ -1,0 +1,34 @@
+# Fails if a change adds something that should never be public: a real-looking board MAC
+# (only made-up aa:bb:cc ones pass), a firmware or flash dump (.bin), or a private key.
+name: Leak check
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  leak-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: No real MAC addresses
+        run: |
+          if git ls-files -z | xargs -0 grep -n -I -i -E '([0-9a-f]{2}:){5}[0-9a-f]{2}' | grep -v -i 'aa:bb:cc'; then
+            echo "::error::Real-looking MAC address found. Use made-up ones: aa:bb:cc:xx:xx:xx."
+            exit 1
+          fi
+      - name: No .bin files
+        run: |
+          if git ls-files | grep -i '\.bin$'; then
+            echo "::error::.bin files can hold flash backups with Wi-Fi passwords. Keep them out of the repo."
+            exit 1
+          fi
+      - name: No private keys
+        run: |
+          if git ls-files -z | xargs -0 grep -n -I -E -- '-----BEGIN [A-Z ]*PRIVATE KEY-----'; then
+            echo "::error::Private key found."
+            exit 1
+          fi

@@ -48,7 +48,7 @@ def test_known_refuses_paths_and_strangers():
     from ebench import board
     for bad in ("../../etc", "aabbcc000001", "AA:BB:CC:00:00:01", "", None, "aa:bb:cc:dd:ee:ff/.."):
         assert board.known(bad) is None, bad
-    assert board.known("00:00:00:00:00:01") is None, "no profile, not plugged in"
+    assert board.known("aa:bb:cc:00:00:09") is None, "no profile, not plugged in"
 
 
 if __name__ == "__main__":
